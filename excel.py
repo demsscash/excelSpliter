@@ -143,16 +143,13 @@ class ExcelSplitterApp:
 
         self.update_ui_for_mode()
 
-    # (Toutes tes autres méthodes split_excel, split_by_rows, split_by_column etc. sont aussi prêtes ici)
     def update_ui_for_mode(self):
         """Met à jour l'interface selon le mode de division sélectionné"""
         if self.split_mode.get() == "rows":
-            # Afficher la configuration par lignes
             if hasattr(self, 'column_config_frame'):
                 self.column_config_frame.pack_forget()
             self.rows_config_frame.pack(fill=tk.X, padx=5, pady=5, after=self.split_mode_frame)
         else:
-            # Afficher la configuration par colonne
             self.rows_config_frame.pack_forget()
             self.column_config_frame.pack(fill=tk.X, padx=5, pady=5, after=self.split_mode_frame)
     
@@ -162,7 +159,6 @@ class ExcelSplitterApp:
         filename = filedialog.askopenfilename(filetypes=filetypes, title="Sélectionner un fichier Excel")
         if filename:
             self.input_file_path.set(filename)
-            # Remettre le focus sur la fenêtre principale après la sélection du fichier
             self.root.focus_force()
     
     def browse_output_folder(self):
@@ -170,90 +166,83 @@ class ExcelSplitterApp:
         folder = filedialog.askdirectory(title="Sélectionner un dossier de sortie")
         if folder:
             self.output_folder_path.set(folder)
-            # Remettre le focus sur la fenêtre principale après la sélection du dossier
             self.root.focus_force()
     
     def load_file(self):
         """Charge le fichier Excel et extrait les colonnes"""
         if not self.input_file_path.get():
             messagebox.showerror("Erreur", "Veuillez sélectionner un fichier Excel d'entrée.")
+            self.root.focus_force()
             return
         
         try:
             self.update_status("Chargement du fichier Excel...")
+            self.progress_var.set(0)
+            self.root.update_idletasks()
             
-            # Charger le fichier dans un DataFrame pandas
+            # Désactiver les boutons pendant le chargement
+            for widget in self.root.winfo_children():
+                if isinstance(widget, ttk.Button):
+                    widget['state'] = tk.DISABLED
+            
+            # Charger le fichier
             self.data = pd.read_excel(self.input_file_path.get())
             self.columns = list(self.data.columns)
             
-            # Mettre à jour la liste déroulante des colonnes
+            # Mettre à jour l'interface
             self.column_combobox['values'] = self.columns
             if self.columns:
-                self.column_combobox.current(0)  # Sélectionner la première colonne par défaut
-                self.update_column_preview()  # Mettre à jour l'aperçu pour la colonne sélectionnée
+                self.column_combobox.current(0)
+                self.update_column_preview()
             
-            # Activer le bouton de division
             self.split_button['state'] = tk.NORMAL
+            self.split_button.focus_set()
             
-            # Mise à jour du statut
             num_rows = len(self.data)
             num_cols = len(self.columns)
             self.update_status(f"Fichier chargé : {num_rows} lignes, {num_cols} colonnes")
             
-            # Lier l'événement de changement de colonne
             self.column_combobox.bind("<<ComboboxSelected>>", lambda e: self.update_column_preview())
             
-            # Remettre le focus sur la fenêtre principale
-            self.root.after(100, self.root.focus_force)
+            # Réactiver les boutons
+            for widget in self.root.winfo_children():
+                if isinstance(widget, ttk.Button):
+                    widget['state'] = tk.NORMAL
             
         except Exception as e:
             messagebox.showerror("Erreur", f"Impossible de charger le fichier : {str(e)}")
             self.update_status(f"Erreur : {str(e)}")
-            # Remettre le focus sur la fenêtre principale après l'erreur
             self.root.focus_force()
     
     def update_column_preview(self):
         """Met à jour l'aperçu des valeurs distinctes pour la colonne sélectionnée"""
-        if not self.data is None and self.selected_column.get():
-            try:
-                # Effacer le tableau d'aperçu
-                for item in self.preview_tree.get_children():
-                    self.preview_tree.delete(item)
-                
-                # Obtenir les valeurs distinctes et leur nombre d'occurrences
-                col_name = self.selected_column.get()
-                value_counts = self.data[col_name].value_counts().reset_index()
-                value_counts.columns = ['value', 'count']
-                
-                # Limiter à 100 valeurs pour des raisons de performance
-                max_display = 100
-                if len(value_counts) > max_display:
-                    displayed_counts = value_counts.iloc[:max_display]
-                    total_distinct = len(value_counts)
-                    
-                    # Ajouter les valeurs au tableau
-                    for _, row in displayed_counts.iterrows():
-                        self.preview_tree.insert("", tk.END, values=(row['value'], row['count']))
-                    
-                    # Ajouter une entrée indiquant qu'il y a plus de valeurs
-                    more_values = total_distinct - max_display
-                    self.preview_tree.insert("", tk.END, values=(f"... {more_values} autres valeurs ...", ""))
-                else:
-                    # Ajouter toutes les valeurs au tableau
-                    for _, row in value_counts.iterrows():
-                        self.preview_tree.insert("", tk.END, values=(row['value'], row['count']))
-                
-                num_distinct = len(value_counts)
-                self.update_status(f"Colonne '{col_name}' a {num_distinct} valeurs distinctes")
-                
-                # Remettre le focus sur la fenêtre principale
-                self.root.focus_force()
-                
-            except Exception as e:
-                messagebox.showerror("Erreur", f"Erreur lors de l'analyse de la colonne : {str(e)}")
-                self.update_status(f"Erreur : {str(e)}")
-                # Remettre le focus sur la fenêtre principale après l'erreur
-                self.root.focus_force()
+        if self.data is None or not self.selected_column.get():
+            return
+            
+        try:
+            # Effacer le tableau d'aperçu
+            self.preview_tree.delete(*self.preview_tree.get_children())
+            
+            # Obtenir les valeurs distinctes (limitée à 50 pour la performance)
+            col_name = self.selected_column.get()
+            value_counts = self.data[col_name].value_counts().reset_index().head(50)
+            value_counts.columns = ['value', 'count']
+            
+            # Ajouter les valeurs au tableau
+            for _, row in value_counts.iterrows():
+                self.preview_tree.insert("", tk.END, values=(row['value'], row['count']))
+            
+            # Ajouter une note si la liste est tronquée
+            total_unique = self.data[col_name].nunique()
+            if total_unique > 50:
+                self.preview_tree.insert("", tk.END, values=(f"... (liste tronquée à 50 valeurs sur {total_unique}) ...", ""))
+            
+            self.update_status(f"Colonne '{col_name}' - {total_unique} valeurs uniques (affichage limité)")
+            
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de l'analyse de la colonne : {str(e)}")
+            self.update_status(f"Erreur : {str(e)}")
+            self.root.focus_force()
     
     def update_status(self, message):
         """Met à jour le message de statut"""
@@ -271,23 +260,17 @@ class ExcelSplitterApp:
             self.progress_var.set(0)
             
             for x in range(no_of_files):
-                # Calcul des indices de début et de fin
                 start_row = x * rows_per_file
                 end_row = min((x + 1) * rows_per_file, count)
                 
-                # Extraction des données pour ce fichier
                 new_data = self.data.iloc[start_row:end_row]
-                
-                # Création du nom de fichier
                 output_file = os.path.join(
                     output_folder, 
                     f"{self.file_prefix.get()}_{date_aujourdhui}_{x}.xlsx"
                 )
                 
-                # Sauvegarde du fichier
                 new_data.to_excel(output_file, index=False)
                 
-                # Mise à jour de la barre de progression
                 progress = (x + 1) / no_of_files * 100
                 self.progress_var.set(progress)
                 self.update_status(f"Création du fichier {x+1}/{no_of_files} : {os.path.basename(output_file)}")
@@ -309,12 +292,11 @@ class ExcelSplitterApp:
             self.progress_var.set(0)
             
             for i, value in enumerate(unique_values):
-                # Filtrer les données pour cette valeur
                 filtered_data = self.data[self.data[col_name] == value]
                 
-                # Création du nom de fichier (valider le nom de fichier)
-                safe_value = str(value).replace("/", "_").replace("\\", "_").replace(":", "_").replace("*", "_").replace("?", "_").replace("\"", "_").replace("<", "_").replace(">", "_").replace("|", "_")
-                if len(safe_value) > 50:  # Limiter la longueur du nom de fichier
+                safe_value = str(value).replace("/", "_").replace("\\", "_").replace(":", "_").replace("*", "_") \
+                             .replace("?", "_").replace("\"", "_").replace("<", "_").replace(">", "_").replace("|", "_")
+                if len(safe_value) > 50:
                     safe_value = safe_value[:50]
                 
                 output_file = os.path.join(
@@ -322,10 +304,8 @@ class ExcelSplitterApp:
                     f"{self.file_prefix.get()}_{date_aujourdhui}_{safe_value}.xlsx"
                 )
                 
-                # Sauvegarde du fichier
                 filtered_data.to_excel(output_file, index=False)
                 
-                # Mise à jour de la barre de progression
                 progress = (i + 1) / no_of_files * 100
                 self.progress_var.set(progress)
                 self.update_status(f"Création du fichier {i+1}/{no_of_files} : {os.path.basename(output_file)}")
@@ -339,8 +319,11 @@ class ExcelSplitterApp:
     def split_excel_thread(self):
         """Fonction exécutée dans un thread séparé pour diviser le fichier Excel"""
         try:
-            # Désactiver le bouton pendant le traitement
+            # Désactiver les widgets pendant le traitement
             self.split_button['state'] = tk.DISABLED
+            for widget in self.root.winfo_children():
+                if isinstance(widget, (ttk.Button, ttk.Entry, ttk.Combobox)):
+                    widget['state'] = tk.DISABLED
             
             # Vérification des entrées
             if not self.input_file_path.get():
@@ -351,46 +334,42 @@ class ExcelSplitterApp:
                 messagebox.showerror("Erreur", "Veuillez d'abord charger le fichier.")
                 return
             
-            # Vérifier le mode et les paramètres associés
             if self.split_mode.get() == "column" and not self.selected_column.get():
                 messagebox.showerror("Erreur", "Veuillez sélectionner une colonne pour la division.")
                 return
             
-            # Création du dossier de sortie s'il n'existe pas
+            # Création du dossier de sortie
             output_folder = self.output_folder_path.get()
             os.makedirs(output_folder, exist_ok=True)
             
-            # Obtenir la date d'aujourd'hui au format AAAAMMJJ
             date_aujourdhui = datetime.datetime.now().strftime("%Y%m%d")
             
-            # Division selon le mode sélectionné
             if self.split_mode.get() == "rows":
                 no_of_files = self.split_by_rows(output_folder, date_aujourdhui)
                 mode_str = "par nombre de lignes"
-            else:  # column
+            else:
                 no_of_files = self.split_by_column(output_folder, date_aujourdhui)
                 mode_str = f"par valeurs de la colonne '{self.selected_column.get()}'"
             
-            # Terminé
             self.update_status(f"Terminé ! {no_of_files} fichiers créés dans {output_folder}")
             messagebox.showinfo("Succès", f"Division {mode_str} terminée !\n{no_of_files} fichiers ont été créés dans le dossier :\n{output_folder}")
-            
-            # Remettre le focus sur la fenêtre principale après la division
-            self.root.focus_force()
             
         except Exception as e:
             messagebox.showerror("Erreur", f"Une erreur est survenue : {str(e)}")
             self.update_status(f"Erreur : {str(e)}")
-            # Remettre le focus sur la fenêtre principale après l'erreur
-            self.root.focus_force()
         
         finally:
-            # Réactiver le bouton
+            # Réactiver les widgets
             self.split_button['state'] = tk.NORMAL
+            for widget in self.root.winfo_children():
+                if isinstance(widget, (ttk.Button, ttk.Entry, ttk.Combobox)):
+                    widget['state'] = tk.NORMAL
+            self.root.focus_force()
     
     def split_excel(self):
         """Lance la division du fichier Excel dans un thread séparé"""
         threading.Thread(target=self.split_excel_thread, daemon=True).start()
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = ExcelSplitterApp(root)
