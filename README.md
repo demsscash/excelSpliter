@@ -1,54 +1,27 @@
 # Excel Splitter Avancé
 
-Une application GUI pour diviser des fichiers Excel en plusieurs fichiers plus petits, selon différents critères.
+![Python](https://img.shields.io/badge/Python-3.6%2B-blue)
+![Pandas](https://img.shields.io/badge/Pandas-1.0%2B-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-## Fonctionnalités
+Une application GUI intuitive pour diviser des fichiers Excel volumineux en plusieurs fichiers plus petits selon différents critères.
+
+## ✨ Fonctionnalités
 
 - **Deux modes de division** :
-  - Par nombre de lignes (découpage fixe)
-  - Par valeurs d'une colonne (un fichier par valeur unique)
-- Aperçu des valeurs distinctes avec comptage
-- Barre de progression pour les opérations longues
-- Interface intuitive avec thème moderne
+  - 🔢 Par nombre de lignes (découpage fixe)
+  - 📊 Par valeurs d'une colonne (un fichier par valeur unique)
+- 👀 Aperçu des valeurs distinctes avec comptage
+- 📊 Barre de progression pour les opérations longues
+- 🎨 Interface moderne et intuitive
+- 🚀 Traitement en arrière-plan pour ne pas bloquer l'interface
+- 📂 Sélection automatique du dossier Documents/ExcelSplitter par défaut
 
-## Prérequis
+## 📦 Prérequis
 
-- Python 3.6+
+- Python 3.6 ou supérieur
 - Packages requis :
-pandas
-openpyxl
-tkinter
-
-
-## Installation
-
-1. Clonez le dépôt ou téléchargez le fichier `excel_splitter.py`
-2. Installez les dépendances :
-pip install pandas openpyxl
-
-
-## Utilisation
-
-1. Lancez l'application :
-python excel_splitter.py
-
-2. Sélectionnez votre fichier Excel
-3. Choisissez le mode de division :
-- **Par lignes** : Définissez le nombre de lignes par fichier
-- **Par colonne** : Sélectionnez la colonne à utiliser
-4. Spécifiez le dossier de sortie et le préfixe des fichiers
-5. Cliquez sur "Diviser le fichier Excel"
-
-## Options avancées
-
-- Le dossier de sortie par défaut est `Documents/ExcelSplitter/`
-- Vous pouvez personnaliser le préfixe des fichiers générés
-- L'aperçu des colonnes montre les 50 premières valeurs uniques
-
-## Captures d'écran
-
-*(Insérez ici des captures si disponibles)*
-
-## Licence
-
-MIT - Libre d'utilisation et de modification
+  ```bash
+  pandas >= 1.0.0
+  openpyxl >= 3.0.0
+  tkinter (inclus dans Python standard)
