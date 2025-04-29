@@ -13,195 +13,137 @@ class ExcelSplitterApp:
         self.root.title("Excel Splitter Avancé")
         self.root.geometry("900x900")
         self.root.resizable(True, True)
-        
-        # Configuration pour améliorer la réactivité
-        self.root.config(takefocus=True)
-        
+
         # Variables
         self.input_file_path = tk.StringVar()
         self.output_folder_path = tk.StringVar()
-        self.rows_per_file = tk.IntVar(value=500)  # Valeur par défaut: 500 lignes
+        self.rows_per_file = tk.IntVar(value=500)
         self.file_prefix = tk.StringVar(value="Template")
-        self.split_mode = tk.StringVar(value="rows")  # Par défaut: division par lignes
+        self.split_mode = tk.StringVar(value="rows")
         self.selected_column = tk.StringVar()
-        
+
         # Données
         self.data = None
         self.columns = []
-        
-        # Définir le dossier Documents comme dossier de sortie par défaut
+
         documents_path = os.path.join(Path.home(), "Documents", "ExcelSplitter")
         self.output_folder_path.set(documents_path)
-        
-        # Création de l'interface
+
         self.create_widgets()
-        
-        # Définir le focus sur la fenêtre principale
         self.root.focus_force()
-        
-        # Capture des événements de clic pour s'assurer que toute la fenêtre est cliquable
-        self.root.bind("<Button-1>", self.handle_click)
-        
-        # Création d'un événement virtuel pour la propagation du focus
-        self.root.event_add('<<PropagateFocus>>', '<Button-1>')
-        
-        # Configuration pour améliorer la réactivité des boutons
-        self.root.bind_class('Button', '<ButtonPress-1>', lambda e: e.widget.invoke())
-        self.root.bind_class('TButton', '<ButtonPress-1>', lambda e: e.widget.invoke())
-        
-    def handle_click(self, event):
-        """Gère les clics dans la fenêtre pour s'assurer que le focus reste sur la fenêtre"""
-        # Assurez-vous que le clic est traité normalement
-        # puis redonner le focus à la fenêtre principale
-        self.root.focus_set()
-        
-        # Propagation de l'événement pour assurer que tous les widgets reçoivent le clic
-        event.widget.event_generate('<<PropagateFocus>>', when='tail')
-    
+
     def create_widgets(self):
-        # Style
         style = ttk.Style()
         style.configure("TButton", padding=6)
         style.configure("TLabel", padding=5)
         style.configure("TLabelframe", padding=10)
         style.configure("TRadiobutton", padding=5)
-        
-        # Créer un style accentué pour le bouton Charger
+
         style.configure("Accent.TButton", background="#4e73df", foreground="white")
-        
-        # Création d'un cadre principal avec défilement
+
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Canvas pour permettre le défilement
+
         main_canvas = tk.Canvas(main_frame)
         main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        # S'assurer que le canvas reçoit aussi les clics
-        main_canvas.bind("<Button-1>", self.handle_click)
-        
-        # Barre de défilement
+
         scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=main_canvas.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
+
         main_canvas.configure(yscrollcommand=scrollbar.set)
         main_canvas.bind('<Configure>', lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all")))
-        
-        # Frame interne pour le contenu
+
         content_frame = ttk.Frame(main_canvas)
         main_canvas.create_window((0, 0), window=content_frame, anchor="nw", width=880)
-        
-        # S'assurer que le contenu reçoit aussi les clics
-        content_frame.bind("<Button-1>", self.handle_click)
-        
-        # Section sélection de fichier d'entrée
+
         input_frame = ttk.LabelFrame(content_frame, text="Fichier Excel à diviser")
         input_frame.pack(fill=tk.X, padx=5, pady=5)
-        
+
         ttk.Label(input_frame, text="Fichier:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        
-        # Créer un sous-cadre pour le champ de saisie et les boutons
+
         input_buttons_frame = ttk.Frame(input_frame)
         input_buttons_frame.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        input_buttons_frame.columnconfigure(0, weight=1)  # Le champ de saisie s'étendra
-        
-        ttk.Entry(input_buttons_frame, textvariable=self.input_file_path,width=50).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        input_buttons_frame.columnconfigure(0, weight=1)
+
+        ttk.Entry(input_buttons_frame, textvariable=self.input_file_path, width=50).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         ttk.Button(input_buttons_frame, text="Parcourir...", command=self.browse_input_file).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(input_buttons_frame, text="Charger", command=self.load_file).pack(side=tk.LEFT)
-        
-        # Section mode de division
+
         self.split_mode_frame = ttk.LabelFrame(content_frame, text="Mode de division")
         self.split_mode_frame.pack(fill=tk.X, padx=5, pady=5)
-        
-        ttk.Radiobutton(self.split_mode_frame, text="Division par nombre de lignes", variable=self.split_mode, 
+
+        ttk.Radiobutton(self.split_mode_frame, text="Division par nombre de lignes", variable=self.split_mode,
                         value="rows", command=self.update_ui_for_mode).grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        ttk.Radiobutton(self.split_mode_frame, text="Division par valeurs de colonne", variable=self.split_mode, 
+        ttk.Radiobutton(self.split_mode_frame, text="Division par valeurs de colonne", variable=self.split_mode,
                         value="column", command=self.update_ui_for_mode).grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
-        
-        # Section configuration par lignes
+
         self.rows_config_frame = ttk.LabelFrame(content_frame, text="Configuration (division par lignes)")
         self.rows_config_frame.pack(fill=tk.X, padx=5, pady=5)
-        
+
         ttk.Label(self.rows_config_frame, text="Nombre de lignes par fichier:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         ttk.Spinbox(self.rows_config_frame, from_=1, to=10000, textvariable=self.rows_per_file, width=10).grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-        
-        # Section configuration par colonne
+
         self.column_config_frame = ttk.LabelFrame(content_frame, text="Configuration (division par colonne)")
-        
         ttk.Label(self.column_config_frame, text="Sélectionnez la colonne:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         self.column_combobox = ttk.Combobox(self.column_config_frame, textvariable=self.selected_column, state="readonly", width=30)
         self.column_combobox.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-        
-        # Tableau d'aperçu des valeurs de colonne
+
         preview_frame = ttk.LabelFrame(self.column_config_frame, text="Aperçu des valeurs distinctes")
         preview_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky=tk.W+tk.E)
-        
-        # Création d'un Treeview pour afficher les valeurs distinctes
+
         columns = ("valeur", "nombre")
         self.preview_tree = ttk.Treeview(preview_frame, columns=columns, show="headings", height=8)
         self.preview_tree.heading("valeur", text="Valeur distincte")
         self.preview_tree.heading("nombre", text="Nombre d'occurrences")
-        self.preview_tree.column("valeur", width=450)  # Augmentation de la largeur
-        self.preview_tree.column("nombre", width=200, anchor=tk.CENTER)  # Augmentation de la largeur
-        
-        # Ajouter une barre de défilement pour l'aperçu
+        self.preview_tree.column("valeur", width=450)
+        self.preview_tree.column("nombre", width=200, anchor=tk.CENTER)
+
         preview_scroll = ttk.Scrollbar(preview_frame, orient="vertical", command=self.preview_tree.yview)
         self.preview_tree.configure(yscrollcommand=preview_scroll.set)
-        
-        # Placement du Treeview et de la barre de défilement
         self.preview_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
         preview_scroll.pack(side=tk.RIGHT, fill=tk.Y, pady=5)
-        
-        # Section préfixe de fichier (commun aux deux modes)
+
         prefix_frame = ttk.LabelFrame(content_frame, text="Paramètres communs")
         prefix_frame.pack(fill=tk.X, padx=5, pady=5)
-        
+
         ttk.Label(prefix_frame, text="Préfixe des fichiers:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         ttk.Entry(prefix_frame, textvariable=self.file_prefix, width=20).grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-        
-        # Section dossier de sortie
+
         output_frame = ttk.LabelFrame(content_frame, text="Dossier de sortie")
         output_frame.pack(fill=tk.X, padx=5, pady=5)
-        
+
         ttk.Label(output_frame, text="Dossier:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        
-        # Créer un sous-cadre pour le champ de saisie et le bouton
+
         output_buttons_frame = ttk.Frame(output_frame)
         output_buttons_frame.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W+tk.E)
-        output_buttons_frame.columnconfigure(0, weight=1)  # Le champ de saisie s'étendra
-        
+        output_buttons_frame.columnconfigure(0, weight=1)
+
         ttk.Entry(output_buttons_frame, textvariable=self.output_folder_path).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
-        browse_output_button = ttk.Button(output_buttons_frame, text="Parcourir...", command=self.browse_output_folder)
-        browse_output_button.pack(side=tk.LEFT)
-        browse_output_button.bind("<ButtonRelease-1>", lambda e: self.browse_output_folder())
-        
-        # Barre de progression
+        ttk.Button(output_buttons_frame, text="Parcourir...", command=self.browse_output_folder).pack(side=tk.LEFT)
+
         progress_frame = ttk.Frame(content_frame)
         progress_frame.pack(fill=tk.X, padx=5, pady=10)
-        
+
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
         self.progress_bar.pack(fill=tk.X, padx=5, pady=5)
-        
-        # Section statut
+
         status_frame = ttk.Frame(content_frame)
         status_frame.pack(fill=tk.X, padx=5, pady=5)
-        
+
         self.status_var = tk.StringVar(value="Prêt. Veuillez charger un fichier Excel.")
         self.status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor=tk.W)
         self.status_label.pack(fill=tk.X, padx=5)
-        
-        # Bouton pour exécuter
+
         button_frame = ttk.Frame(content_frame)
         button_frame.pack(fill=tk.X, padx=5, pady=10)
-        
+
         self.split_button = ttk.Button(button_frame, text="Diviser le fichier Excel", command=self.split_excel, state=tk.DISABLED)
         self.split_button.pack(side=tk.RIGHT, padx=5)
-        self.split_button.bind("<ButtonRelease-1>", lambda e: self.split_excel())
-        
-        # Configuration initiale de l'interface selon le mode
+
         self.update_ui_for_mode()
-    
+
+    # (Toutes tes autres méthodes split_excel, split_by_rows, split_by_column etc. sont aussi prêtes ici)
     def update_ui_for_mode(self):
         """Met à jour l'interface selon le mode de division sélectionné"""
         if self.split_mode.get() == "rows":
@@ -449,11 +391,7 @@ class ExcelSplitterApp:
     def split_excel(self):
         """Lance la division du fichier Excel dans un thread séparé"""
         threading.Thread(target=self.split_excel_thread, daemon=True).start()
-
-
 if __name__ == "__main__":
     root = tk.Tk()
     app = ExcelSplitterApp(root)
-    # Définir le focus sur la fenêtre principal au lancement
-    root.focus_force()
     root.mainloop()
